@@ -3,6 +3,7 @@
   "short_name": "SongBridge",
   "description": "Share a Spotify link. Open it anywhere.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
