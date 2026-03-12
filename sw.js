@@ -1,4 +1,4 @@
-const CACHE = 'songbridge-v1';
+const CACHE = 'songbridge-v2';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -19,7 +19,7 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   // Network-first for API calls
-  if (e.request.url.includes('song.link') || e.request.url.includes('api.')) {
+  if (e.request.url.includes('.netlify/functions')) {
     return;
   }
   e.respondWith(
