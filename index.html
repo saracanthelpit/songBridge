@@ -743,7 +743,16 @@ function renderResult() {
     document.getElementById('album-art').src = entity.thumbnailUrl || '';
   }
 
-  const links     = currentData.linksByPlatform || {};
+  const links = currentData.linksByPlatform || {};
+
+  // Odesli no longer reliably returns YouTube/Apple Music — inject search fallbacks
+  if (entity) {
+    const q = encodeURIComponent(`${entity.title} ${entity.artistName}`);
+    if (!links.youtubeMusic) links.youtubeMusic = { url: `https://music.youtube.com/search?q=${q}` };
+    if (!links.youtube)      links.youtube      = { url: `https://www.youtube.com/results?search_query=${q}` };
+    if (!links.appleMusic)   links.appleMusic   = { url: `https://music.apple.com/us/search?term=${q}` };
+  }
+
   const qs        = settings.quickShare && settings.shortlist.length > 0;
   const available = PLATFORMS.filter(p => links[p.key]?.url);
   const toShow    = (qs && !showingAll)
