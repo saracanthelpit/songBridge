@@ -228,12 +228,9 @@ qsToggle.addEventListener('change', () => {
   settings.quickShare = qsToggle.checked;
 });
 
-document.querySelectorAll('.format-opt').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.format-opt').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    settings.copyFmt = btn.dataset.fmt;
-  });
+const fmtToggle = document.getElementById('fmt-toggle');
+fmtToggle.addEventListener('change', () => {
+  settings.copyFmt = fmtToggle.checked ? 'rich' : 'links';
 });
 
 function buildChecklist() {
@@ -262,9 +259,7 @@ function buildChecklist() {
 
 function syncSettingsUI() {
   qsToggle.checked = settings.quickShare;
-  document.querySelectorAll('.format-opt').forEach(b => {
-    b.classList.toggle('active', b.dataset.fmt === settings.copyFmt);
-  });
+  fmtToggle.checked = settings.copyFmt === 'rich';
   buildChecklist();
 }
 

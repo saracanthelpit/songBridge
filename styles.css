@@ -456,28 +456,6 @@ footer {
 .toggle input:checked + .toggle-track { background: var(--accent); }
 .toggle input:checked + .toggle-track::after { transform: translateX(18px); }
 
-/* Format toggle */
-.format-toggle {
-  display: flex;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-.format-opt {
-  flex: 1;
-  padding: 0.6rem 0.5rem;
-  text-align: center;
-  font-size: 0.68rem;
-  color: var(--muted2);
-  cursor: pointer;
-  border: none;
-  background: none;
-  font-family: 'DM Mono', monospace;
-  transition: background 0.15s, color 0.15s;
-}
-.format-opt.active { background: var(--accent-dim); color: var(--accent); }
-
 /* Platform checklist */
 #platform-checklist { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.25rem; }
 
