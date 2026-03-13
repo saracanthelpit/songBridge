@@ -19,12 +19,7 @@
 
 <header>
   <div class="header-left">
-    <div class="logo-mark">
-      <svg viewBox="0 0 20 20" fill="none">
-        <path d="M3 10 Q10 3 17 10 Q10 17 3 10Z" stroke="#0a0a0a" stroke-width="1.5" fill="none"/>
-        <circle cx="10" cy="10" r="2.5" fill="#0a0a0a"/>
-      </svg>
-    </div>
+    <div class="logo-mark">S</div>
     <h1>Song<span>Bridge</span></h1>
   </div>
   <button id="settings-btn" aria-label="Settings">
@@ -42,7 +37,7 @@
   </div>
 
   <div class="input-area">
-    <div class="input-label">Spotify URL</div>
+    <div class="input-label"><span id="source-label">Spotify URL</span></div>
     <div class="input-row">
       <input
         id="url-input"
@@ -112,6 +107,12 @@
           <span class="toggle-track"></span>
         </label>
       </div>
+    </div>
+
+    <div class="settings-section">
+      <div class="settings-section-title">Source service</div>
+      <p class="hint-text">Which app are you sharing from?</p>
+      <div id="source-picker"></div>
     </div>
 
     <div class="settings-section">

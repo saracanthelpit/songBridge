@@ -1,9 +1,21 @@
-const PLATFORMS = [
+const SOURCE_SERVICES = [
+  { key: 'spotify',      name: 'Spotify',       icon: '🎧', bg: '#1db954', placeholder: 'https://open.spotify.com/track/...' },
+  { key: 'appleMusic',   name: 'Apple Music',   icon: '🍎', bg: '#fc3c44', placeholder: 'https://music.apple.com/us/album/...' },
+  { key: 'youtubeMusic', name: 'YouTube Music', icon: '🎵', bg: '#ff0000', placeholder: 'https://music.youtube.com/watch?v=...' },
+  { key: 'youtube',      name: 'YouTube',       icon: '▶️',  bg: '#cc0000', placeholder: 'https://www.youtube.com/watch?v=...' },
+  { key: 'tidal',        name: 'Tidal',         icon: '🌊', bg: '#008fe8', placeholder: 'https://listen.tidal.com/track/...' },
+  { key: 'amazonMusic',  name: 'Amazon Music',  icon: '📦', bg: '#00a8e0', placeholder: 'https://music.amazon.com/albums/...' },
+  { key: 'deezer',       name: 'Deezer',        icon: '🎶', bg: '#a238ff', placeholder: 'https://www.deezer.com/track/...' },
+  { key: 'soundcloud',   name: 'SoundCloud',    icon: '☁️',  bg: '#ff5500', placeholder: 'https://soundcloud.com/...' },
+];
+
+const ALL_PLATFORMS = [
+  { key: 'spotify',      name: 'Spotify',       icon: '🎧', bg: '#1db954' },
   { key: 'youtubeMusic', name: 'YouTube Music', icon: '🎵', bg: '#ff0000' },
   { key: 'youtube',      name: 'YouTube',       icon: '▶️',  bg: '#cc0000' },
   { key: 'appleMusic',   name: 'Apple Music',   icon: '🍎', bg: '#fc3c44' },
   { key: 'amazonMusic',  name: 'Amazon Music',  icon: '📦', bg: '#00a8e0' },
-  { key: 'tidal',        name: 'Tidal',         icon: '🌊', bg: '#1a1a1a' },
+  { key: 'tidal',        name: 'Tidal',         icon: '🌊', bg: '#008fe8' },
   { key: 'deezer',       name: 'Deezer',        icon: '🎶', bg: '#a238ff' },
   { key: 'soundcloud',   name: 'SoundCloud',    icon: '☁️',  bg: '#ff5500' },
   { key: 'pandora',      name: 'Pandora',       icon: '📻', bg: '#3668ff' },
@@ -20,9 +32,10 @@ function saveSettings(s) {
 }
 
 let settings = loadSettings();
-if (!settings.shortlist)               settings.shortlist  = ['youtubeMusic', 'appleMusic', 'amazonMusic'];
-if (settings.quickShare === undefined) settings.quickShare = false;
-if (!settings.copyFmt)                 settings.copyFmt    = 'rich';
+if (!settings.shortlist)               settings.shortlist     = ['youtubeMusic', 'appleMusic', 'amazonMusic'];
+if (settings.quickShare === undefined) settings.quickShare    = false;
+if (!settings.copyFmt)                 settings.copyFmt       = 'rich';
+if (!settings.sourceService)           settings.sourceService = 'spotify';
 
 let currentData = null;
 let showingAll  = false;
@@ -38,6 +51,16 @@ const qsBadge       = document.getElementById('qs-badge');
 const showAllBtn    = document.getElementById('show-all-btn');
 const copyAllWrap   = document.getElementById('copy-all-wrap');
 const copyAllBtn    = document.getElementById('copy-all-btn');
+
+function currentSource() {
+  return SOURCE_SERVICES.find(s => s.key === settings.sourceService) || SOURCE_SERVICES[0];
+}
+
+function updateInputUI() {
+  const src = currentSource();
+  document.getElementById('source-label').textContent = src.name + ' URL';
+  urlInput.placeholder = src.placeholder;
+}
 
 function showError(msg) {
   errorMsg.textContent = msg;
@@ -63,7 +86,7 @@ async function lookup(url) {
     loading.style.display = 'none';
     renderResult();
   } catch(e) {
-    showError("Couldn't find that song. Make sure it's a valid Spotify link.");
+    showError(`Couldn't find that song. Make sure it's a valid ${currentSource().name} link.`);
   } finally {
     goBtn.disabled = false;
   }
@@ -90,10 +113,14 @@ function renderResult() {
     if (!links.youtubeMusic) links.youtubeMusic = { url: `https://music.youtube.com/search?q=${q}` };
     if (!links.youtube)      links.youtube      = { url: `https://www.youtube.com/results?search_query=${q}` };
     if (!links.appleMusic)   links.appleMusic   = { url: `https://music.apple.com/us/search?term=${q}` };
+    if (!links.spotify)      links.spotify      = { url: `https://open.spotify.com/search/${q}` };
   }
 
+  // Exclude the source service from results
+  const platforms = ALL_PLATFORMS.filter(p => p.key !== settings.sourceService);
+
   const qs        = settings.quickShare && settings.shortlist.length > 0;
-  const available = PLATFORMS.filter(p => links[p.key]?.url);
+  const available = platforms.filter(p => links[p.key]?.url);
   const toShow    = (qs && !showingAll)
     ? available.filter(p => settings.shortlist.includes(p.key))
     : available;
@@ -163,8 +190,9 @@ copyAllBtn.addEventListener('click', async () => {
   const entities = currentData.entitiesByUniqueId || {};
   const firstKey = Object.keys(entities)[0];
   const entity   = firstKey ? entities[firstKey] : null;
+  const platforms = ALL_PLATFORMS.filter(p => p.key !== settings.sourceService);
   const qs       = settings.quickShare && settings.shortlist.length > 0;
-  const available = PLATFORMS.filter(p => links[p.key]?.url);
+  const available = platforms.filter(p => links[p.key]?.url);
   const toShare  = (qs && !showingAll)
     ? available.filter(p => settings.shortlist.includes(p.key))
     : available;
@@ -196,9 +224,9 @@ urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') goBtn.click()
 const params = new URLSearchParams(window.location.search);
 const shared = params.get('url') || params.get('text');
 if (shared) {
-  const spotifyUrl = shared.match(/https?:\/\/[^\s]+/)?.[0] || shared;
-  urlInput.value = spotifyUrl;
-  lookup(spotifyUrl);
+  const sharedUrl = shared.match(/https?:\/\/[^\s]+/)?.[0] || shared;
+  urlInput.value = sharedUrl;
+  lookup(sharedUrl);
 }
 
 // ── Settings Drawer ──
@@ -217,6 +245,7 @@ function closeSettings() {
   drawer.classList.remove('open');
   document.body.style.overflow = '';
   saveSettings(settings);
+  updateInputUI();
   if (currentData) renderResult();
 }
 
@@ -233,10 +262,31 @@ fmtToggle.addEventListener('change', () => {
   settings.copyFmt = fmtToggle.checked ? 'rich' : 'links';
 });
 
+function buildSourcePicker() {
+  const picker = document.getElementById('source-picker');
+  picker.innerHTML = '';
+  SOURCE_SERVICES.forEach(({ key, name, icon, bg }) => {
+    const item = document.createElement('div');
+    item.className = 'source-item' + (settings.sourceService === key ? ' selected' : '');
+    item.innerHTML = `
+      <div class="check-icon" style="background:${bg}22">${icon}</div>
+      <span class="check-name">${name}</span>
+      <div class="source-radio"></div>
+    `;
+    item.addEventListener('click', () => {
+      settings.sourceService = key;
+      picker.querySelectorAll('.source-item').forEach(el => el.classList.remove('selected'));
+      item.classList.add('selected');
+    });
+    picker.appendChild(item);
+  });
+}
+
 function buildChecklist() {
   const list = document.getElementById('platform-checklist');
   list.innerHTML = '';
-  PLATFORMS.forEach(({ key, name, icon, bg }) => {
+  // Show all platforms except the current source in the shortlist
+  ALL_PLATFORMS.filter(p => p.key !== settings.sourceService).forEach(({ key, name, icon, bg }) => {
     const item = document.createElement('div');
     item.className = 'platform-check-item' + (settings.shortlist.includes(key) ? ' checked' : '');
     item.innerHTML = `
@@ -260,6 +310,7 @@ function buildChecklist() {
 function syncSettingsUI() {
   qsToggle.checked = settings.quickShare;
   fmtToggle.checked = settings.copyFmt === 'rich';
+  buildSourcePicker();
   buildChecklist();
 }
 
@@ -281,3 +332,6 @@ document.getElementById('install-btn').addEventListener('click', async () => {
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
+
+// Init
+updateInputUI();
