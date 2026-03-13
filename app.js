@@ -51,6 +51,7 @@ const qsBadge       = document.getElementById('qs-badge');
 const showAllBtn    = document.getElementById('show-all-btn');
 const copyAllWrap   = document.getElementById('copy-all-wrap');
 const copyAllBtn    = document.getElementById('copy-all-btn');
+const shareBtn      = document.getElementById('share-btn');
 
 function currentSource() {
   return SOURCE_SERVICES.find(s => s.key === settings.sourceService) || SOURCE_SERVICES[0];
@@ -85,6 +86,16 @@ async function lookup(url) {
     currentData = await res.json();
     loading.style.display = 'none';
     renderResult();
+
+    // When opened via share target, try firing the native share sheet automatically
+    if (isShareTarget) {
+      const handled = await tryAutoShare();
+      if (!handled) {
+        // Auto-share blocked (gesture timing) — pulse the share button to guide the user
+        shareBtn.classList.add('pulse');
+        shareBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
   } catch(e) {
     showError(`Couldn't find that song. Make sure it's a valid ${currentSource().name} link.`);
   } finally {
@@ -175,9 +186,47 @@ function renderResult() {
     return;
   }
 
+  // Show share button only if Web Share API is available
+  shareBtn.style.display = navigator.share ? 'block' : 'none';
+
   copyAllWrap.style.display = 'block';
   songCard.style.display = 'block';
 }
+
+// ── Web Share ──
+function buildShareText() {
+  if (!currentData) return '';
+  const entities = currentData.entitiesByUniqueId || {};
+  const firstKey = Object.keys(entities)[0];
+  const entity   = firstKey ? entities[firstKey] : null;
+  const links    = currentData.linksByPlatform || {};
+  const platforms = ALL_PLATFORMS.filter(p => p.key !== settings.sourceService);
+  const qs        = settings.quickShare && settings.shortlist.length > 0;
+  const available = platforms.filter(p => links[p.key]?.url);
+  const toShare   = qs ? available.filter(p => settings.shortlist.includes(p.key)) : available;
+  let text = '';
+  if (entity && settings.copyFmt === 'rich') text += `\uD83C\uDFB5 ${entity.title} \u2014 ${entity.artistName}\n\n`;
+  text += toShare.map(p => `${p.name}: ${links[p.key].url}`).join('\n');
+  return text;
+}
+
+async function tryAutoShare() {
+  if (!navigator.share || !currentData) return false;
+  const text = buildShareText();
+  if (!text) return false;
+  try {
+    await navigator.share({ text });
+    return true;
+  } catch(e) {
+    return e.name === 'AbortError'; // AbortError = user cancelled, still counts as "handled"
+  }
+}
+
+shareBtn.addEventListener('click', async () => {
+  const text = buildShareText();
+  if (!text) return;
+  try { await navigator.share({ text }); } catch {}
+});
 
 showAllBtn.addEventListener('click', () => {
   showingAll = !showingAll;
@@ -221,8 +270,10 @@ goBtn.addEventListener('click', () => {
 urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') goBtn.click(); });
 
 // Android Share Target
-const params = new URLSearchParams(window.location.search);
-const shared = params.get('url') || params.get('text');
+const params        = new URLSearchParams(window.location.search);
+const shared        = params.get('url') || params.get('text');
+const isShareTarget = !!shared;
+
 if (shared) {
   const sharedUrl = shared.match(/https?:\/\/[^\s]+/)?.[0] || shared;
   urlInput.value = sharedUrl;

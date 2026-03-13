@@ -318,8 +318,33 @@ main {
   transition: background 0.15s;
   letter-spacing: 0.02em;
 }
-#copy-all-btn:active { background: rgba(200,240,60,0.18); }
+#copy-all-btn:active { background: rgba(168,85,247,0.18); }
 #copy-all-btn.copied { color: #7c3aed; border-color: rgba(124,58,237,0.3); }
+
+#share-btn {
+  display: none;
+  width: 100%;
+  background: var(--accent);
+  border: none;
+  border-radius: 9px;
+  padding: 0.85rem 1rem;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #0a0a0a;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+  letter-spacing: 0.02em;
+  margin-bottom: 0.5rem;
+}
+#share-btn:active { opacity: 0.85; transform: scale(0.98); }
+#share-btn.pulse {
+  animation: sharePulse 1.4s ease infinite;
+}
+@keyframes sharePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(168,85,247,0.5); }
+  50%       { box-shadow: 0 0 0 10px rgba(168,85,247,0); }
+}
 
 /* Install */
 #install-prompt {
