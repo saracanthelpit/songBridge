@@ -7,9 +7,9 @@
   --text: #f0ede8;
   --muted: #555;
   --muted2: #888;
-  --accent: #c8f03c;
-  --accent-dim: rgba(200, 240, 60, 0.10);
-  --accent-border: rgba(200, 240, 60, 0.22);
+  --accent: #a855f7;
+  --accent-dim: rgba(168, 85, 247, 0.10);
+  --accent-border: rgba(168, 85, 247, 0.22);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -314,7 +314,7 @@ main {
   letter-spacing: 0.02em;
 }
 #copy-all-btn:active { background: rgba(200,240,60,0.18); }
-#copy-all-btn.copied { color: #7dbe00; border-color: rgba(125,190,0,0.3); }
+#copy-all-btn.copied { color: #7c3aed; border-color: rgba(124,58,237,0.3); }
 
 /* Install */
 #install-prompt {
