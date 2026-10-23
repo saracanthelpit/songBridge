@@ -75,14 +75,48 @@ function hideAll() {
   loading.style.display = 'none';
 }
 
+class LookupFailure extends Error {
+  constructor(code) { super(code); this.code = code; }
+}
+
+function lookupErrorMessage(code) {
+  switch (code) {
+    case 'offline':
+      return "Couldn't connect. Check your internet connection and try again.";
+    case 'missing_url':
+    case 'unsupported_url':
+      return "That doesn't look like a song link from a supported service (Spotify, Apple Music, YouTube, YouTube Music, Tidal, Amazon Music, Deezer or SoundCloud).";
+    case 'not_found':
+      return "Couldn't find a song at that link. Make sure it's a link to a song, not a playlist or profile.";
+    case 'upstream_unreachable':
+    case 'upstream_error':
+      return "The music service didn't respond. It may be having issues \u2014 try again in a minute.";
+    default:
+      return 'Something went wrong looking up that song. Try again in a minute.';
+  }
+}
+
+// Platform to leave out of results: the one the link came from
+function sourceKey() {
+  return currentData?.source || settings.sourceService;
+}
+
 async function lookup(url) {
   hideAll();
   showingAll = false;
   loading.style.display = 'flex';
   goBtn.disabled = true;
   try {
-    const res = await fetch(`/.netlify/functions/lookup?url=${encodeURIComponent(url)}`);
-    if (!res.ok) throw new Error(res.status);
+    let res;
+    try {
+      res = await fetch(`/.netlify/functions/lookup?url=${encodeURIComponent(url)}`);
+    } catch {
+      throw new LookupFailure('offline');
+    }
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new LookupFailure(body.error || `http_${res.status}`);
+    }
     currentData = await res.json();
     loading.style.display = 'none';
     renderResult();
@@ -97,7 +131,7 @@ async function lookup(url) {
       }
     }
   } catch(e) {
-    showError(`Couldn't find that song. Make sure it's a valid ${currentSource().name} link.`);
+    showError(lookupErrorMessage(e.code));
   } finally {
     goBtn.disabled = false;
   }
@@ -106,29 +140,17 @@ async function lookup(url) {
 function renderResult() {
   if (!currentData) return;
 
-  const entities = currentData.entitiesByUniqueId || {};
-  const firstKey = Object.keys(entities)[0];
-  const entity   = firstKey ? entities[firstKey] : null;
-
-  if (entity) {
-    document.getElementById('song-title').textContent  = entity.title      || 'Unknown Title';
-    document.getElementById('song-artist').textContent = entity.artistName || 'Unknown Artist';
-    document.getElementById('album-art').src = entity.thumbnailUrl || '';
+  const song = currentData.song;
+  if (song) {
+    document.getElementById('song-title').textContent  = song.title      || 'Unknown Title';
+    document.getElementById('song-artist').textContent = song.artistName || 'Unknown Artist';
+    document.getElementById('album-art').src = song.thumbnailUrl || '';
   }
 
   const links = currentData.linksByPlatform || {};
 
-  // Odesli no longer reliably returns YouTube/Apple Music — inject search fallbacks
-  if (entity) {
-    const q = encodeURIComponent(`${entity.title} ${entity.artistName}`);
-    if (!links.youtubeMusic) links.youtubeMusic = { url: `https://music.youtube.com/search?q=${q}` };
-    if (!links.youtube)      links.youtube      = { url: `https://www.youtube.com/results?search_query=${q}` };
-    if (!links.appleMusic)   links.appleMusic   = { url: `https://music.apple.com/us/search?term=${q}` };
-    if (!links.spotify)      links.spotify      = { url: `https://open.spotify.com/search/${q}` };
-  }
-
   // Exclude the source service from results
-  const platforms = ALL_PLATFORMS.filter(p => p.key !== settings.sourceService);
+  const platforms = ALL_PLATFORMS.filter(p => p.key !== sourceKey());
 
   const qs        = settings.quickShare && settings.shortlist.length > 0;
   const available = platforms.filter(p => links[p.key]?.url);
@@ -194,18 +216,20 @@ function renderResult() {
 }
 
 // ── Web Share ──
+function songLabel(song) {
+  return song.artistName ? `${song.title} \u2014 ${song.artistName}` : song.title;
+}
+
 function buildShareText() {
   if (!currentData) return '';
-  const entities = currentData.entitiesByUniqueId || {};
-  const firstKey = Object.keys(entities)[0];
-  const entity   = firstKey ? entities[firstKey] : null;
-  const links    = currentData.linksByPlatform || {};
-  const platforms = ALL_PLATFORMS.filter(p => p.key !== settings.sourceService);
+  const song      = currentData.song;
+  const links     = currentData.linksByPlatform || {};
+  const platforms = ALL_PLATFORMS.filter(p => p.key !== sourceKey());
   const qs        = settings.quickShare && settings.shortlist.length > 0;
   const available = platforms.filter(p => links[p.key]?.url);
   const toShare   = qs ? available.filter(p => settings.shortlist.includes(p.key)) : available;
   let text = '';
-  if (entity && settings.copyFmt === 'rich') text += `\uD83C\uDFB5 ${entity.title} \u2014 ${entity.artistName}\n\n`;
+  if (song && settings.copyFmt === 'rich') text += `\uD83C\uDFB5 ${songLabel(song)}\n\n`;
   text += toShare.map(p => `${p.name}: ${links[p.key].url}`).join('\n');
   return text;
 }
@@ -236,10 +260,8 @@ showAllBtn.addEventListener('click', () => {
 copyAllBtn.addEventListener('click', async () => {
   if (!currentData) return;
   const links    = currentData.linksByPlatform || {};
-  const entities = currentData.entitiesByUniqueId || {};
-  const firstKey = Object.keys(entities)[0];
-  const entity   = firstKey ? entities[firstKey] : null;
-  const platforms = ALL_PLATFORMS.filter(p => p.key !== settings.sourceService);
+  const song     = currentData.song;
+  const platforms = ALL_PLATFORMS.filter(p => p.key !== sourceKey());
   const qs       = settings.quickShare && settings.shortlist.length > 0;
   const available = platforms.filter(p => links[p.key]?.url);
   const toShare  = (qs && !showingAll)
@@ -247,8 +269,8 @@ copyAllBtn.addEventListener('click', async () => {
     : available;
 
   let text = '';
-  if (settings.copyFmt === 'rich' && entity) {
-    text += `\uD83C\uDFB5 ${entity.title} \u2014 ${entity.artistName}\n\n`;
+  if (settings.copyFmt === 'rich' && song) {
+    text += `\uD83C\uDFB5 ${songLabel(song)}\n\n`;
   }
   text += toShare.map(p => `${p.name}: ${links[p.key].url}`).join('\n');
 
